@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gerador de Apresentação Interativa</title>
+<meta name="description" content="Transforma um PowerPoint em uma apresentação HTML interativa com linha do tempo, rota sugerida e cronômetro. Tudo roda no navegador.">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="topo">
+  <div class="in">
+    <div class="marca">
+      <span class="selo" aria-hidden="true">▶</span>
+      <div>
+        <h1>Gerador de Apresentação Interativa</h1>
+        <p>PowerPoint → HTML com linha do tempo, rota sugerida e cronômetro. Nada sai do seu computador.</p>
+      </div>
+    </div>
+  </div>
+  <nav class="passos" id="passos" aria-label="Etapas"></nav>
+</header>
+
+<main id="app">
+
+  <!-- 1 · ARQUIVOS -->
+  <section class="etapa" data-etapa="arquivos" data-rotulo="Arquivos">
+    <header class="cab">
+      <span class="eyebrow">Etapa 1</span>
+      <h2>Envie a apresentação</h2>
+      <p>O <b>PDF</b> fornece as imagens dos slides — no PowerPoint: <b>Arquivo › Salvar como › PDF</b>.
+         O <b>PPTX</b> é opcional, mas melhora a leitura dos títulos e identifica slides ocultos.</p>
+    </header>
+    <div class="grade2">
+      <label class="drop" id="dropPdf" for="inPdf">
+        <span class="drop-tag obrig">Obrigatório</span>
+        <strong>Apresentação em PDF</strong>
+        <span class="sub">Arraste aqui ou clique para escolher</span>
+        <span class="nome-arq" id="nomePdf"></span>
+        <input type="file" id="inPdf" accept=".pdf,application/pdf">
+      </label>
+      <label class="drop" id="dropPptx" for="inPptx">
+        <span class="drop-tag">Recomendado</span>
+        <strong>Arquivo .pptx original</strong>
+        <span class="sub">Títulos mais precisos e slides ocultos</span>
+        <span class="nome-arq" id="nomePptx"></span>
+        <input type="file" id="inPptx" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation">
+      </label>
+    </div>
+    <p class="dica">Dica: arraste os dois arquivos juntos para qualquer um dos quadros.</p>
+    <div class="progresso" id="progresso" hidden>
+      <div class="prog-txt"><b id="progMsg">Lendo…</b><span id="progSub"></span></div>
+      <div class="barra"><i id="progBarra"></i></div>
+    </div>
+    <div class="erro" id="erroArquivos" hidden></div>
+  </section>
+
+  <!-- 2 · PAUTA -->
+  <section class="etapa" data-etapa="pauta" data-rotulo="Pauta" hidden>
+    <header class="cab">
+      <span class="eyebrow">Etapa 2</span>
+      <h2>Confira a pauta</h2>
+      <p id="resumoLeitura"></p>
+    </header>
+    <div class="aviso" id="avisoLeitura" hidden></div>
+    <div class="grade3">
+      <div class="campo span2"><label for="fTitulo">Título</label><input type="text" id="fTitulo"></div>
+      <div class="campo"><label for="fData">Data da reunião</label><input type="text" id="fData"></div>
+      <div class="campo span3"><label for="fSub">Subtítulo</label><input type="text" id="fSub"></div>
+    </div>
+    <div class="pauta">
+      <div>
+        <h3 class="h3">Tópico de cada slide</h3>
+        <p class="sub">Slides com o mesmo nome formam um tópico da linha do tempo, mesmo fora de sequência.
+          <b>Abertura</b> e <b>Encerramento</b> ficam fora da pauta. Em branco = mesmo tópico do slide anterior.</p>
+        <datalist id="listaTopicos"></datalist>
+        <div class="slides" id="gradeSlides"></div>
+      </div>
+      <aside class="painel-topicos">
+        <h3 class="h3">Tópicos da linha do tempo</h3>
+        <p class="sub">Destaque opcional — aparece no painel de cada tópico.</p>
+        <div id="listaResumo" class="lista-topicos"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 3 · FORMATO -->
+  <section class="etapa" data-etapa="formato" data-rotulo="Formato" hidden>
+    <header class="cab">
+      <span class="eyebrow">Etapa 3</span>
+      <h2>Como você quer conduzir a apresentação?</h2>
+      <p>Escolha se a apresentação terá só a sequência completa ou também uma rota sugerida, mais curta.</p>
+    </header>
+    <div class="escolhas" role="radiogroup" aria-label="Formato da apresentação">
+      <label class="escolha">
+        <input type="radio" name="modo" value="completa">
+        <span class="esc-k">Apresentação completa</span>
+        <span class="esc-d">Todos os slides, na ordem original. A tela inicial mostra a linha do tempo com um único botão de apresentar.</span>
+        <span class="esc-n" id="nCompleta"></span>
+      </label>
+      <label class="escolha rota">
+        <input type="radio" name="modo" value="sugerida">
+        <span class="esc-k">Rota sugerida</span>
+        <span class="esc-d">Você escolhe os slides de uma versão mais curta. A tela inicial oferece as duas opções: completa e rota sugerida.</span>
+        <span class="esc-n" id="nSugerida"></span>
+      </label>
+    </div>
+
+    <div id="blocoRota" hidden>
+      <div class="barra-rota">
+        <div>
+          <h3 class="h3">Quais slides compõem a rota sugerida?</h3>
+          <p class="sub">Clique nos slides para incluir ou tirar. Use o botão de cada tópico para marcar ou desmarcar o tópico inteiro.</p>
+        </div>
+        <div class="contador" id="contadorRota"></div>
+      </div>
+      <div class="atalhos">
+        <button type="button" class="btn sec pq" id="rotaTodos">Marcar todos</button>
+        <button type="button" class="btn sec pq" id="rotaNenhum">Limpar</button>
+        <button type="button" class="btn sec pq" id="rotaPadrao">Sugestão padrão</button>
+      </div>
+      <div id="seletorRota" class="seletor"></div>
+    </div>
+  </section>
+
+  <!-- 4 · TEMPO -->
+  <section class="etapa" data-etapa="tempo" data-rotulo="Tempo" hidden>
+    <header class="cab">
+      <span class="eyebrow">Etapa 4</span>
+      <h2>Quanto tempo você tem?</h2>
+      <p>A estimativa aparece nos botões da tela inicial e alimenta o cronômetro com indicador de ritmo durante a apresentação.</p>
+    </header>
+    <div class="grade2 estreita">
+      <div class="campo tempo">
+        <label for="fTempoC">Apresentação completa</label>
+        <div class="com-unid"><input type="number" id="fTempoC" min="1" max="600" inputmode="numeric"><span>min</span></div>
+        <span class="ritmo" id="ritmoC"></span>
+      </div>
+      <div class="campo tempo" id="campoTempoS">
+        <label for="fTempoS">Rota sugerida</label>
+        <div class="com-unid"><input type="number" id="fTempoS" min="1" max="600" inputmode="numeric"><span>min</span></div>
+        <span class="ritmo" id="ritmoS"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · TEMA -->
+  <section class="etapa" data-etapa="tema" data-rotulo="Tema" hidden>
+    <header class="cab">
+      <span class="eyebrow">Etapa 5</span>
+      <h2>Escolha o tema</h2>
+      <p>Quem assiste ainda pode alternar entre os temas com a tecla <kbd>T</kbd>.</p>
+    </header>
+    <div class="temas" role="radiogroup" aria-label="Tema">
+      <label class="tema" data-t="azul">
+        <input type="radio" name="tema" value="azul">
+        <span class="mini"><i class="m-h"></i><i class="m-l"></i><span class="m-dots"><i></i><i></i><i></i><i></i></span><i class="m-c"></i></span>
+        <span class="tema-n"><b>Azul</b> Sala de controle, ideal para projetor</span>
+      </label>
+      <label class="tema" data-t="branco">
+        <input type="radio" name="tema" value="branco">
+        <span class="mini"><i class="m-h"></i><i class="m-l"></i><span class="m-dots"><i></i><i></i><i></i><i></i></span><i class="m-c"></i></span>
+        <span class="tema-n"><b>Branco</b> Claro, para notebook e salas iluminadas</span>
+      </label>
+      <label class="tema" data-t="escuro">
+        <input type="radio" name="tema" value="escuro">
+        <span class="mini"><i class="m-h"></i><i class="m-l"></i><span class="m-dots"><i></i><i></i><i></i><i></i></span><i class="m-c"></i></span>
+        <span class="tema-n"><b>Dark mode</b> Grafite neutro, contraste suave</span>
+      </label>
+    </div>
+  </section>
+
+  <!-- 6 · GERAR -->
+  <section class="etapa" data-etapa="gerar" data-rotulo="Gerar" hidden>
+    <header class="cab">
+      <span class="eyebrow">Etapa 6</span>
+      <h2>Tudo pronto</h2>
+      <p>Confira o resumo e gere o arquivo. O HTML é autônomo: as imagens vão embutidas, abre offline e pode ser enviado por e-mail.</p>
+    </header>
+    <dl class="resumo" id="resumoFinal"></dl>
+    <div class="acoes-finais">
+      <button type="button" class="btn" id="btnGerar">Gerar apresentação</button>
+      <span class="gerando" id="gerando" hidden>Montando o arquivo…</span>
+    </div>
+    <div class="pronto" id="pronto" hidden>
+      <p><b id="prontoNome"></b> <span id="prontoTam"></span></p>
+      <div class="acoes-finais">
+        <a class="btn" id="btnAbrir" target="_blank" rel="noopener">Abrir apresentação ↗</a>
+        <a class="btn sec" id="btnBaixar">Baixar .html</a>
+        <button type="button" class="btn sec" id="btnNovo">Começar outra</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="nav" id="nav">
+  <div class="in">
+    <button type="button" class="btn sec" id="btnVoltar">← Voltar</button>
+    <span class="nav-info" id="navInfo"></span>
+    <button type="button" class="btn" id="btnAvancar">Próximo →</button>
+  </div>
+</footer>
+
+<script src="vendor/jszip.min.js"></script>
+<script src="vendor/pdfjs/pdf.min.js"></script>
+<script src="js/modelo-apresentacao.js"></script>
+<script src="js/leitura.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
