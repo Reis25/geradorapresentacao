@@ -12,13 +12,13 @@
     rotaPadrao: ['DEC e FEC', 'Diagnóstico DEC', 'Conjuntos', 'Improcedentes']
   };
 
-  var ETAPAS = ['arquivos', 'pauta', 'formato', 'tempo', 'tema', 'gerar'];
+  var ETAPAS = ['arquivos', 'pauta', 'formato', 'ordem', 'tempo', 'tema', 'gerar'];
   var L = window.Leitura;
 
   var S = {
     pdf: null, pptx: null, assinatura: '',
     slides: [], ocultos: [], aviso: '', capa: null,
-    destaques: {}, modo: null, rota: {}, rotaTocada: false,
+    destaques: {}, modo: null, rota: {}, rotaTocada: false, ordem: [],
     tema: 'azul', etapa: 0, etapaMax: 0, urlHtml: null
   };
 
@@ -64,6 +64,7 @@
     var e = ETAPAS[i];
     if (e === 'pauta') desenharResumoTopicos();
     if (e === 'formato') entrarFormato();
+    if (e === 'ordem') desenharOrdem();
     if (e === 'tempo') entrarTempo();
     if (e === 'tema') marcarTema();
     if (e === 'gerar') entrarGerar();
@@ -167,7 +168,7 @@
       var p = L.montarPauta(paginas, slidesPptx);
       S.slides = p.slides; S.ocultos = p.ocultos; S.aviso = p.aviso; S.capa = p.capa;
       S.assinatura = assinatura();
-      S.rota = {}; S.rotaTocada = false; S.destaques = {};
+      S.rota = {}; S.rotaTocada = false; S.destaques = {}; S.ordem = [];
       $('fTitulo').value = p.capa.titulo || S.pdf.name.replace(/\.pdf$/i, '');
       $('fSub').value = p.capa.subtitulo || '';
       $('fData').value = p.capa.data || '';
@@ -330,7 +331,91 @@
   $('rotaNenhum').onclick = function () { S.rota = {}; S.rotaTocada = true; desenharSeletor(); };
   $('rotaPadrao').onclick = function () { rotaPadrao(); S.rotaTocada = true; desenharSeletor(); };
 
-  /* ---------------- Etapa 4: tempo ---------------- */
+  /* ---------------- Etapa 4: ordem dos tópicos ---------------- */
+  /* Tópicos na ordem escolhida em S.ordem; tópicos novos entram na posição natural (fim) */
+  function topicosOrdenados() {
+    var t = calcularTopicos(), mapa = {}, lista = [];
+    t.lista.forEach(function (tp) { mapa[chave(tp.nome)] = tp; });
+    S.ordem.forEach(function (k) { if (mapa[k]) { lista.push(mapa[k]); delete mapa[k]; } });
+    t.lista.forEach(function (tp) { if (mapa[chave(tp.nome)]) lista.push(tp); });
+    S.ordem = lista.map(function (tp) { return chave(tp.nome); });
+    return { lista: lista, moldura: t.moldura };
+  }
+
+  /* Sequência de páginas: Abertura, tópicos na ordem escolhida, Encerramento */
+  function sequenciaPaginas(t) {
+    var abert = [], encer = [], meio = [];
+    t.moldura.forEach(function (p) {
+      (chave(S.slides[p - 1].topicoFinal) === chave(L.ENCERRAMENTO) ? encer : abert).push(p);
+    });
+    t.lista.forEach(function (tp) { meio = meio.concat(tp.paginas); });
+    return abert.concat(meio, encer);
+  }
+
+  function moverTopico(de, para) {
+    if (para < 0 || para >= S.ordem.length || de === para) return;
+    var k = S.ordem.splice(de, 1)[0];
+    S.ordem.splice(para, 0, k);
+  }
+
+  function desenharOrdem(foco) {
+    var t = topicosOrdenados(), box = $('listaOrdem'), arrastando = null;
+    box.innerHTML = '';
+    t.lista.forEach(function (tp, i) {
+      var li = document.createElement('li');
+      li.className = 'ord'; li.draggable = true;
+      var naRota = S.modo === 'sugerida' && tp.paginas.some(function (p) { return S.rota[p]; });
+      var miniaturas = tp.paginas.slice(0, 4).map(function (p) { return '<img loading="lazy" alt="" src="' + S.slides[p - 1].url + '">'; }).join('') +
+        (tp.paginas.length > 4 ? '<span class="mais">+' + (tp.paginas.length - 4) + '</span>' : '');
+      li.innerHTML = '<span class="ord-alca" aria-hidden="true">⋮⋮</span>' +
+        '<span class="ord-n">' + (i < 9 ? '0' : '') + (i + 1) + '</span>' +
+        '<div class="ord-info"><b>' + esc(tp.nome) + '</b><span>' + plural(tp.paginas.length, 'slide', 'slides') +
+        (naRota ? ' · <em>na rota sugerida</em>' : '') + '</span></div>' +
+        '<div class="ord-mini">' + miniaturas + '</div>' +
+        '<div class="ord-bts">' +
+        '<button type="button" class="btn sec pq" data-d="-1" aria-label="Subir ' + esc(tp.nome) + '"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+        '<button type="button" class="btn sec pq" data-d="1" aria-label="Descer ' + esc(tp.nome) + '"' + (i === t.lista.length - 1 ? ' disabled' : '') + '>↓</button>' +
+        '</div>';
+      [].forEach.call(li.querySelectorAll('[data-d]'), function (b) {
+        b.onclick = function () {
+          var d = +b.getAttribute('data-d');
+          moverTopico(i, i + d);
+          desenharOrdem({ i: i + d, d: d });
+        };
+      });
+      li.addEventListener('dragstart', function (e) {
+        arrastando = i; li.classList.add('arrastando');
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', String(i)); } catch (_) {}
+      });
+      li.addEventListener('dragend', function () {
+        arrastando = null; li.classList.remove('arrastando');
+        [].forEach.call(box.children, function (el) { el.classList.remove('alvo'); });
+      });
+      li.addEventListener('dragover', function (e) {
+        if (arrastando === null) return;
+        e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+        [].forEach.call(box.children, function (el) { el.classList.toggle('alvo', el === li && arrastando !== i); });
+      });
+      li.addEventListener('drop', function (e) {
+        e.preventDefault();
+        if (arrastando === null) return;
+        moverTopico(arrastando, i);
+        arrastando = null;
+        desenharOrdem();
+      });
+      box.appendChild(li);
+    });
+    if (!t.lista.length) box.innerHTML = '<p class="sub">Nenhum tópico na pauta.</p>';
+    if (foco) {
+      var li = box.children[foco.i], b = li && (li.querySelector('[data-d="' + foco.d + '"]:not(:disabled)') || li.querySelector('[data-d]:not(:disabled)'));
+      if (b) b.focus();
+    }
+  }
+
+  $('ordemOriginal').onclick = function () { S.ordem = []; desenharOrdem(); };
+
+  /* ---------------- Etapa 5: tempo ---------------- */
   function entrarTempo() {
     $('campoTempoS').hidden = S.modo !== 'sugerida';
     atualizarRitmo();
@@ -343,7 +428,7 @@
   $('fTempoC').addEventListener('input', atualizarRitmo);
   $('fTempoS').addEventListener('input', atualizarRitmo);
 
-  /* ---------------- Etapa 5: tema ---------------- */
+  /* ---------------- Etapa 6: tema ---------------- */
   function marcarTema() {
     [].forEach.call(document.querySelectorAll('.tema'), function (l) {
       var inp = l.querySelector('input');
@@ -355,14 +440,15 @@
     r.addEventListener('change', function () { S.tema = r.value; marcarTema(); });
   });
 
-  /* ---------------- Etapa 6: gerar ---------------- */
+  /* ---------------- Etapa 7: gerar ---------------- */
   var NOMES_TEMA = { azul: 'Azul', branco: 'Branco', escuro: 'Dark mode' };
 
   function entrarGerar() {
-    var t = calcularTopicos(), c = contarRota();
+    var t = topicosOrdenados(), c = contarRota();
     var linhas = [
       ['Título', $('fTitulo').value.trim()],
       ['Slides', S.slides.length + ' · ' + plural(t.lista.length, 'tópico', 'tópicos') + ' na linha do tempo'],
+      ['Ordem', t.lista.map(function (tp) { return tp.nome; }).join(' › ')],
       ['Formato', S.modo === 'sugerida' ? 'Completa + rota sugerida (' + plural(c.slides, 'slide', 'slides') + ')' : 'Apresentação completa'],
       ['Tempo', 'Completa ≈ ' + $('fTempoC').value + ' min' + (S.modo === 'sugerida' ? ' · Rota sugerida ≈ ' + $('fTempoS').value + ' min' : '')],
       ['Tema', NOMES_TEMA[S.tema]]
@@ -386,7 +472,7 @@
   }
 
   function montarConfig() {
-    var t = calcularTopicos();
+    var t = topicosOrdenados();
     var agora = new Date(), dois = function (n) { return (n < 10 ? '0' : '') + n; };
     var topicos = t.lista.map(function (tp, i) {
       return {
@@ -400,7 +486,7 @@
       titulo: $('fTitulo').value.trim(), subtitulo: $('fSub').value.trim(), data: $('fData').value.trim(),
       tema: S.tema, modo: S.modo, rota: rota,
       tempoCompleta: +$('fTempoC').value, tempoSugerida: S.modo === 'sugerida' ? +$('fTempoS').value : 0,
-      paginas: S.slides.length, topicos: topicos,
+      paginas: S.slides.length, topicos: topicos, ordem: sequenciaPaginas(t),
       moldura: t.moldura.map(function (p) { return { p: p, nome: S.slides[p - 1].topicoFinal }; }),
       arquivo: (S.pptx || S.pdf).name,
       geradoEm: dois(agora.getDate()) + '/' + dois(agora.getMonth() + 1) + '/' + agora.getFullYear() + ' ' + dois(agora.getHours()) + ':' + dois(agora.getMinutes())

@@ -221,7 +221,8 @@ var IMG = __IMAGENS__;
   var TEM_ROTA = CFG.modo==='sugerida' && CFG.rota && CFG.rota.length>0;
   var inRoute={}; if(TEM_ROTA) CFG.rota.forEach(function(p){inRoute[p]=true;});
   var FULL=[],ROUTE=[];
-  for(var p=1;p<=N;p++){ FULL.push(p); if(inRoute[p]) ROUTE.push(p); }
+  if(CFG.ordem&&CFG.ordem.length===N) FULL=CFG.ordem.slice(); else for(var p=1;p<=N;p++) FULL.push(p);
+  FULL.forEach(function(p){ if(inRoute[p]) ROUTE.push(p); });
   T.forEach(function(t){ t.rotaPags=t.paginas.filter(function(p){return inRoute[p];}); t.rota=t.rotaPags.length>0; });
   var routeT=T.filter(function(t){return t.rota;});
   var perFull=CFG.tempoCompleta/FULL.length, perRoute=TEM_ROTA?CFG.tempoSugerida/Math.max(1,ROUTE.length):0;
@@ -335,7 +336,7 @@ var IMG = __IMAGENS__;
   function toggleTema(){var ordem=['azul','branco','escuro'],r=document.documentElement,i=ordem.indexOf(r.getAttribute('data-theme'));r.setAttribute('data-theme',ordem[(i+1)%ordem.length]);}
 
   $('prev').onclick=function(){step(-1);}; $('next').onclick=function(){step(1);}; $('back').onclick=home;
-  $('btnFull').onclick=function(){openAt('full',1,true);};
+  $('btnFull').onclick=function(){openAt('full',FULL[0],true);};
   $('btnRoute').onclick=function(){if(TEM_ROTA)openAt('route',ROUTE[0],true);};
   $('fs').onclick=toggleFs; $('timer').onclick=timerToggle; $('tema').onclick=toggleTema;
   $('stage').addEventListener('click',function(e){if(e.target.id==='vimg'){var r=e.target.getBoundingClientRect();step(e.clientX-r.left<r.width*0.3?-1:1);}});
