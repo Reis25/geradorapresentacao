@@ -12,13 +12,14 @@ Tudo roda no navegador. Os arquivos **não saem do seu computador** e não é pr
 ## Como usar
 
 1. No PowerPoint, salve a apresentação em PDF: **Arquivo › Salvar como › PDF**.
-2. Abra o gerador e siga as 6 etapas:
+2. Abra o gerador e siga as 7 etapas:
    1. **Arquivos**: envie o PDF, que é obrigatório. O `.pptx` é opcional, mas deixa os títulos mais precisos e identifica os slides ocultos.
    2. **Pauta**: confira o título e o tópico de cada slide. Slides com o mesmo nome formam um tópico.
    3. **Formato**: escolha entre **Apresentação completa** e **Rota sugerida**. Na rota sugerida, clique nos slides que vão compor a rota.
-   4. **Tempo**: informe o tempo estimado de cada formato.
-   5. **Tema**: escolha Azul, Branco ou Dark mode.
-   6. **Gerar**: abra a apresentação ou baixe o `.html`.
+   4. **Ordem**: arraste os tópicos, ou use as setas, para definir a ordem de apresentação. Os slides de cada tópico mantêm a ordem original; Abertura fica no início e Encerramento no fim.
+   5. **Tempo**: informe o tempo estimado de cada formato.
+   6. **Tema**: escolha Azul, Branco ou Dark mode.
+   7. **Gerar**: abra a apresentação ou baixe o `.html`.
 
 O arquivo gerado é autônomo, porque as imagens vão embutidas. Ele abre offline e pode ser enviado por e-mail.
 
@@ -55,7 +56,7 @@ Depois acesse http://localhost:8000. Abrir o `index.html` com dois cliques até 
 ## Estrutura
 
 ```
-index.html                  assistente (6 etapas)
+index.html                  assistente (7 etapas)
 css/app.css                 estilos do assistente
 js/app.js                   fluxo das etapas e geração do HTML
 js/leitura.js               leitura do PPTX (títulos, ocultos) e do PDF (imagens)
